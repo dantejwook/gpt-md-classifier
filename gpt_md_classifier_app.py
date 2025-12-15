@@ -222,3 +222,4 @@ if uploaded_files and "zip_path" not in st.session_state:
 
     # ✅ 저장
     st.session_state["zip_path"] = zip_path
+    st.experimental_rerun()
