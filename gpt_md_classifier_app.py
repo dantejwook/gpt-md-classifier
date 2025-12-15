@@ -22,11 +22,21 @@ st.markdown("""
 uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
 
 # ▶️ 시작 버튼과 새로고침 버튼 UI 추가
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns(2)
 with col1:
-    start_clicked = st.button("🚀 분석 및 분류 시작")
+    start_clicked = st.button("🚀 분석 및 분류 시작", type="primary", use_container_width=True)
 with col2:
-    if st.button("🔄 전체 새로고침"):
+    refresh_style = """
+        <style>
+        div.stButton > button:first-child {
+            background-color: #4CAF50;
+            color: white;
+        }
+        </style>
+    """
+    st.markdown(refresh_style, unsafe_allow_html=True)
+    if st.button("🔄 전체 새로고침", use_container_width=True):
+        st.experimental_rerun()
         st.experimental_rerun()
 
 if not client.api_key:
