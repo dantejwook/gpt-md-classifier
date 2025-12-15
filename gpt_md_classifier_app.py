@@ -22,43 +22,45 @@ st.markdown("""
 uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
 
 # ▶️ 시작 버튼과 새로고침 버튼 UI 추가
-st.markdown("<div style='display: flex; gap: 10px;'>", unsafe_allow_html=True)
-col1, col2 = st.columns([1, 1])
-with col1:
-    start_style = """
-    <style>
-    div.start-button > button:first-child {
-        background-color: #d9534f;
-        color: white;
-    }
-    </style>
+button_style = """
+<style>
+.button-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.button-container .start-button button {
+    background-color: #d9534f;
+    color: white;
+    font-weight: bold;
+    width: 100%;
+}
+.button-container .refresh-button button {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+    width: 100%;
+}
+</style>
+<div class="button-container">
+  <div class="start-button">
+    <form action="?start=1" method="post">
+      <button type="submit">🚀 분석 및 분류 시작</button>
+    </form>
+  </div>
+  <div class="refresh-button">
+    <form action="?refresh=1" method="post">
+      <button type="submit">🔄 전체 새로고침</button>
+    </form>
+  </div>
+</div>
 """
-st.markdown(start_style, unsafe_allow_html=True)
-with st.container():
-    start_clicked = st.button("🚀 분석 및 분류 시작", key="start", use_container_width=True, help="업로드한 파일을 분석하여 그룹화 시작")
-with col2:
-    refresh_style = """
-        <style>
-        div.stButton > button:first-child {
-            background-color: #4CAF50;
-            color: white;
-        }
-        </style>
-    """
-    st.markdown(refresh_style, unsafe_allow_html=True)
-    refresh_style = """
-    <style>
-    div.refresh-button > button:first-child {
-        background-color: #4CAF50;
-        color: white;
-    }
-    </style>
-"""
-st.markdown(refresh_style, unsafe_allow_html=True)
-with st.container():
-    if st.button("🔄 전체 새로고침", key="refresh", use_container_width=True):
-        st.experimental_rerun()
-st.markdown("</div>", unsafe_allow_html=True)
+st.markdown(button_style, unsafe_allow_html=True)
+
+# 버튼 로직
+query_params = st.experimental_get_query_params()
+start_clicked = "start" in query_params
+if "refresh" in query_params:
         st.experimental_rerun()
         st.experimental_rerun()
 
