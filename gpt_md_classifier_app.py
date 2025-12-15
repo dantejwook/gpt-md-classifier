@@ -84,7 +84,7 @@ def get_grouped_topics(file_infos):
 
     try:
         res = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-5-mini",
             messages=[{"role": "user", "content": merge_prompt}]
         )
         text = res.choices[0].message.content.strip()
@@ -99,4 +99,89 @@ def get_grouped_topics(file_infos):
             elif "키워드:" in line and current_group:
                 keyword_str = line.split(":", 1)[1]
                 groups[current_group]["keywords"] = [k.strip() for k in keyword_str.split(",")]
-        return g
+        return groups
+    except Exception as e:
+        st.error(f"병합 처리 중 오류 발생: {e}")
+        return {}
+
+# ------------------------------
+# Main Logic
+# ------------------------------
+if uploaded_files:
+    st.subheader("📊 파일 분석 및 병합 진행 중...")
+
+    file_infos = []
+    seen_files = set()
+    future_to_file = {}
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        progress = st.progress(0.0)
+        status_text = st.empty()
+        for uploaded_file in uploaded_files:
+            filename = uploaded_file.name
+            if filename in seen_files:
+                continue
+            seen_files.add(filename)
+            content = uploaded_file.read().decode("utf-8")
+            future = executor.submit(get_topic_and_summary, filename, content)
+            future_to_file[future] = {"filename": filename, "content": content}
+
+        for i, future in enumerate(as_completed(future_to_file)):
+            result = future.result()
+            info = future_to_file[future]
+            info["topic"], info["summary"] = result
+            file_infos.append(info)
+            percent = (i + 1) / len(future_to_file)
+            progress.progress(percent)
+            status_text.markdown(f"📄 분석 중: {i+1}/{len(future_to_file)}개 완료 ({int(percent*100)}%)")
+
+    # 그룹핑 처리
+    grouped = get_grouped_topics(file_infos)
+
+    # ------------------------------
+    # 병합 및 압축 저장
+    # ------------------------------
+    temp_dir = tempfile.mkdtemp()
+    saved_files = []
+
+    try:
+        for topic, group_data in grouped.items():
+            filenames = group_data["files"]
+            keywords = group_data.get("keywords", [])
+            folder = os.path.join(temp_dir, topic.replace(" ", "_"))
+            os.makedirs(folder, exist_ok=True)
+
+            # README 생성
+            readme_path = os.path.join(folder, "README.md")
+            with open(readme_path, "w", encoding="utf-8") as readme:
+                readme.write(f"# {topic}\n\n")
+                if keywords:
+                    readme.write(f"**📌 키워드:** {', '.join(keywords)}\n\n")
+                readme.write("## 📄 포함된 파일 목록\n")
+                for f in filenames:
+                    readme.write(f"- {f}\n")
+                saved_files.append(readme_path)
+
+            # 파일 저장
+            for f in filenames:
+                match = next((item for item in file_infos if item['filename'] == f), None)
+                if match:
+                    full_path = os.path.join(folder, f)
+                    with open(full_path, "w", encoding="utf-8") as md_file:
+                        md_file.write(match["content"])
+                    saved_files.append(full_path)
+
+        # 압축
+        zip_path = os.path.join(temp_dir, "merged_markdowns.zip")
+        with zipfile.ZipFile(zip_path, "w") as zipf:
+            for filepath in saved_files:
+                arcname = os.path.relpath(filepath, temp_dir)
+                zipf.write(filepath, arcname)
+
+        with open(zip_path, "rb") as fp:
+            st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
+
+        st.success("✅ 병합이 완료되었습니다! ZIP 파일을 다운로드하세요.")
+        st.caption("※ 다운로드 후 임시 폴더는 자동으로 삭제됩니다.")
+    finally:
+        shutil.rmtree(temp_dir)
