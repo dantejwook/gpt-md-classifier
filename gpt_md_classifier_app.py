@@ -35,7 +35,7 @@ T = {
     "analyzing": "분석 중..." if is_ko else "Analyzing...",
     "tags": "태그" if is_ko else "Tags",
     "prompt": (
-        "다음은 마크다운 문서입니다. 이 문서에서 주요 키워드 또는 태그 3~5개를 뽑아주세요. "
+        "다음은 마크다운 문서입니다. 이 문서에서 주요 키워드 또는 주제 3~5개를 뽑아주세요. "
         "한글 또는 영어 단어로 간결하게 추출하세요.\n출력 형식:\n태그: tag1, tag2, tag3"
         if is_ko else
         "The following is a Markdown document. Extract 3 to 5 key tags or keywords from this content. "
@@ -48,7 +48,7 @@ st.set_page_config(page_title=T["title"], page_icon="🧩", layout="wide")
 st.title(T["title"])
 
 # ✅ 모델 선택 + 다시 시작 버튼
-model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-4", "gpt-3.5-turbo", "gpt-5-nano"], index=0)
+model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-5-nano", "gpt-4", "gpt-3.5-turbo"], index=0)
 if st.sidebar.button(T["restart_btn"]):
     if st.sidebar.radio(T["restart_confirm"], ["아니오", "예"] if is_ko else ["No", "Yes"], index=0, key="reset_confirm") == ("예" if is_ko else "Yes"):
         st.session_state.clear()
@@ -177,6 +177,17 @@ if uploaded_files and not st.session_state.analysis_done:
             log_area.markdown(f"✅ `{info['filename']}` → {T['tags']}: {', '.join(tags)}")
 
     grouped = group_by_tags(file_infos)
+
+    # ✅ 키워드  빈도 요약
+    all_tags = [tag for f in file_infos for tag in f["tags"]]
+    tag_counts = Counter(all_tags)
+    summary_path = os.path.join(temp_dir, "tags_summary.md")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write("# 📊 키워드 사용 빈도 요약\n\n" if is_ko else "# 📊 Tag Usage Summary\n\n")
+        f.write("| 키워드 | 사용 횟수 |\n|------|----------|\n" if is_ko else "| Tag | Count |\n|------|----------|\n")
+        for tag, count in tag_counts.most_common():
+            f.write(f"| `{tag}` | {count} |\n")
+    saved_files.append(summary_path)
 
     # ✅ 결과 ZIP 생성
     st.subheader(T["preview_title"])
