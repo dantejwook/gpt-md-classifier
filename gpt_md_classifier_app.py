@@ -9,22 +9,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ✅ OpenAI SDK v1+
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# ✅ 페이지 기본 설정
+# ✅ 페이지 설정
 st.set_page_config(page_title="📁 Markdown 자동 분류기", page_icon="📚", layout="wide")
-st.title("📁 AI 파일 자동 분류 및 키워드 요약")
+st.title("📁 ChatGPT 기반 Markdown 자동 분류 + 병합 도구")
 
 st.markdown("""
-Markdown 파일들을 업로드하면 GPT가 내용을 요약하고, 관련 주제끼리 그룹화하여 ZIP 파일로 제공합니다.
+Markdown 파일을 업로드하면 GPT가 내용을 분석하고 주제별로 그룹화하여 ZIP 파일로 제공합니다.
 """)
-
-# ✅ 사이드바: GPT 모델 선택
-st.sidebar.markdown("## ⚙️ 설정")
-model_choice = st.sidebar.selectbox(
-    "📌 사용할 GPT 모델",
-    ["gpt-5-nano", "gpt-3.5-turbo"],
-    index=0,
-    help="파일 요약 분석에 사용할 GPT 모델을 선택하세요."
-)
 
 # ✅ 세션 상태 초기화
 if "zip_path" not in st.session_state:
@@ -32,8 +23,35 @@ if "zip_path" not in st.session_state:
     st.session_state.grouped = None
     st.session_state.file_infos = None
     st.session_state.analysis_done = False
+    st.session_state.show_confirm = False  # 초기화 확장창 표시 여부
 
-# ✅ 좌우 컬럼 레이아웃
+# ✅ 사이드바: 모델 선택 + 초기화 버튼
+st.sidebar.markdown("## ⚙️ 설정")
+
+model_choice = st.sidebar.selectbox(
+    "📌 사용할 GPT 모델",
+    ["gpt-5-nano", "gpt-3.5-turbo"],
+    index=0,
+)
+
+# 🔄 초기화 요청 → 확장 확인창 띄우기
+if st.sidebar.button("🔄 다시 시작"):
+    st.session_state.show_confirm = True
+
+# ✅ 초기화 확인창
+if st.session_state.show_confirm:
+    with st.sidebar.expander("⚠️ 정말 초기화할까요?", expanded=True):
+        st.warning("모든 분석 결과와 업로드된 파일이 초기화됩니다.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ 예, 초기화할게요"):
+                st.session_state.clear()
+                st.experimental_rerun()
+        with col2:
+            if st.button("❌ 취소"):
+                st.session_state.show_confirm = False
+
+# ✅ 좌우 컬럼
 left_col, right_col = st.columns([1, 2.5])
 
 with left_col:
@@ -62,7 +80,7 @@ def get_topic_and_summary(filename, content):
 """
     try:
         res = client.chat.completions.create(
-            model=model_choice,  # ← 사이드바에서 선택한 모델 사용
+            model=model_choice,
             messages=[{"role": "user", "content": prompt}]
         )
         text = res.choices[0].message.content.strip()
@@ -76,7 +94,7 @@ def get_topic_and_summary(filename, content):
     except Exception as e:
         return "Unknown", f"❗ 오류: {str(e)}"
 
-# ✅ GPT 그룹화 함수 (고정 모델 사용)
+# ✅ GPT 그룹핑
 def get_grouped_topics(file_infos):
     merge_prompt = """
 다음은 여러 마크다운 파일의 주제 및 요약입니다. 관련 있는 파일끼리 5~10개의 그룹으로 나눠주세요.
@@ -91,7 +109,7 @@ def get_grouped_topics(file_infos):
 
     try:
         res = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # 그룹화는 항상 안정된 모델로
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": merge_prompt}]
         )
         text = res.choices[0].message.content.strip()
@@ -110,7 +128,7 @@ def get_grouped_topics(file_infos):
         st.error(f"병합 처리 중 오류 발생: {e}")
         return {}
 
-# ✅ 분석 실행
+# ✅ 자동 분석 시작
 if uploaded_files and not st.session_state.analysis_done:
     st.subheader("📊 파일 분석 중...")
 
@@ -142,12 +160,11 @@ if uploaded_files and not st.session_state.analysis_done:
             percent = (i + 1) / len(future_to_file)
             progress.progress(percent)
             status_text.markdown(f"📄 분석 중: {i+1}/{len(future_to_file)}개 완료")
-            log_container.markdown(f"✅ **{info['filename']}** → 주제: _{topic}_ / 요약: _{summary}_")
+            log_container.markdown(f"✅ **{info['filename']}**")
 
-    # ✅ 그룹화 실행
     grouped = get_grouped_topics(file_infos)
 
-    # ✅ 결과 저장
+    # ✅ ZIP 생성
     temp_dir = tempfile.mkdtemp()
     saved_files = []
 
@@ -181,7 +198,7 @@ if uploaded_files and not st.session_state.analysis_done:
             arcname = os.path.relpath(filepath, temp_dir)
             zipf.write(filepath, arcname)
 
-    # ✅ 세션에 결과 저장
+    # ✅ 세션 상태 저장
     st.session_state.zip_path = zip_path
     st.session_state.grouped = grouped
     st.session_state.file_infos = file_infos
