@@ -44,12 +44,12 @@ button_style = """
 </style>
 <div class="button-container">
   <div class="start-button">
-    <form action="?start=1" method="post">
+    <form action="?start=1">
       <button type="submit">🚀 분석 및 분류 시작</button>
     </form>
   </div>
   <div class="refresh-button">
-    <form action="?refresh=1" method="post">
+    <form action="?refresh=1">
       <button type="submit">🔄 전체 새로고침</button>
     </form>
   </div>
@@ -61,6 +61,7 @@ st.markdown(button_style, unsafe_allow_html=True)
 query_params = st.experimental_get_query_params()
 start_clicked = "start" in query_params
 if "refresh" in query_params:
+    st.experimental_rerun()
         st.experimental_rerun()
         st.experimental_rerun()
 
