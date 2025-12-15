@@ -189,4 +189,4 @@ if uploaded_files:
     with open(zip_path, "rb") as fp:
         st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
 
-    st.caption("※ ZIP 다운로드 후에도 다시 분석하지 않습니다. 다시 시작하려면 상단의 '🔄 다시 시작' 버튼을 눌러주세요.")
+    st.caption("※ 새로고침 하려면 상단의 '🔄 다시 시작' 버튼을 눌러주세요.")
