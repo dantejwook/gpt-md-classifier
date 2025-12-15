@@ -48,7 +48,7 @@ def get_topic_from_gpt(filename, content):
 """
     try:
         res = client.chat.completions.create(
-            model="gpt-4-1106-preview",
+            model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
         )
