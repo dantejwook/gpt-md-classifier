@@ -42,12 +42,7 @@ st.markdown("""
 }
 </style>
 <div class="button-container">
-  <div class="start-button">
-    <form action="?start=1">
-      <button type="submit">🚀 분석 및 분류 시작</button>
-    </form>
-  </div>
-  <div class="refresh-button">
+    <div class="refresh-button">
     <form action="?refresh=1">
       <button type="submit">🔄 전체 새로고침</button>
     </form>
