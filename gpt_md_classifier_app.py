@@ -15,11 +15,11 @@ st.set_page_config(page_title="📁 Markdown 자동 병합 분류기", page_icon
 st.title("📁 ChatGPT 기반 Markdown 자동 분류 + 주제 병합")
 st.markdown("""
 업로드한 Markdown 파일들을 GPT가 자동 분석하여 **시너지 있는 주제 그룹**으로 묶어줍니다.  
-파일은 10개씩 묶어서 처리되며, 모든 결과는 ZIP으로 다운로드할 수 있습니다.
+모든 결과는 ZIP으로 다운로드할 수 있습니다.
 """)
 
 # ✅ Upload Area
-uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
+uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 1000개)", type="md", accept_multiple_files=True)
 
 # ✅ Refresh Button Only
 st.markdown("""
