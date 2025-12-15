@@ -6,17 +6,18 @@ import shutil
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections import defaultdict
+import time
 
 # ✅ OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# ✅ 언어 선택
+# ✅ 언어 설정
 LANG = st.sidebar.selectbox("🌐 Language / 언어", ["한국어", "English"])
 is_ko = LANG == "한국어"
 
 # ✅ 텍스트 사전
 T = {
-    "title": "🧩 GPT 기반 Markdown 태그 분류기" if is_ko else "🧩 GPT-Based Markdown Tag Classifier",
+    "title": "🧩 ai 파일 태그,키워드 분류기" if is_ko else "🧩 ai-Based keyword / Tag Classifier",
     "upload_label": "⬆️ Markdown (.md) 파일 업로드" if is_ko else "⬆️ Upload Markdown (.md) files",
     "download_box": "📦 ZIP 다운로드 박스" if is_ko else "📦 ZIP Download Box",
     "download_btn": "📥 ZIP 다운로드" if is_ko else "📥 Download ZIP",
@@ -42,13 +43,12 @@ T = {
     )
 }
 
-# ✅ 페이지 기본 설정
+# ✅ 페이지 설정
 st.set_page_config(page_title=T["title"], page_icon="🧩", layout="wide")
 st.title(T["title"])
 
-# ✅ 사이드바
-model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-5-nano", "gpt-4", "gpt-3.5-turbo"], index=0)
-
+# ✅ 모델 선택 + 다시 시작 버튼
+model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-4", "gpt-3.5-turbo", "gpt-5-nano"], index=0)
 if st.sidebar.button(T["restart_btn"]):
     if st.sidebar.radio(T["restart_confirm"], ["아니오", "예"] if is_ko else ["No", "Yes"], index=0, key="reset_confirm") == ("예" if is_ko else "Yes"):
         st.session_state.clear()
@@ -61,8 +61,8 @@ if "zip_path" not in st.session_state:
     st.session_state.grouped = None
     st.session_state.file_infos = None
 
-# ✅ 고정 상태 메시지 출력
-def show_fixed_status(status_msg):
+# ✅ 고정 상태 메시지 함수
+def show_fixed_status(msg):
     st.markdown(
         f"""
         <div style="
@@ -70,7 +70,7 @@ def show_fixed_status(status_msg):
             top: 0;
             left: 0;
             width: 100%;
-            background-color: #fde68a;
+            background-color: #fef3c7;
             color: #000;
             padding: 12px 20px;
             z-index: 1000;
@@ -78,14 +78,14 @@ def show_fixed_status(status_msg):
             border-bottom: 1px solid #e0e0e0;
             text-align: center;
         ">
-        {status_msg}
+        {msg}
         </div>
         <br><br><br>
         """,
         unsafe_allow_html=True
     )
 
-# ✅ GPT 태그 추출
+# ✅ GPT 태그 추출 함수
 def extract_tags(filename, content):
     prompt = f"{T['prompt']}\n\n문서명: {filename}\n내용:\n{content[:1000].rsplit('\\n', 1)[0]}..."
     try:
@@ -103,7 +103,7 @@ def extract_tags(filename, content):
     except Exception:
         return []
 
-# ✅ 그룹핑 함수
+# ✅ 태그 기반 그룹핑
 def group_by_tags(file_infos):
     tag_to_files = defaultdict(list)
     for info in file_infos:
@@ -142,9 +142,10 @@ with right:
     else:
         st.info(T["waiting_info"])
 
-# ✅ 분석 및 실행
+# ✅ 분석 및 그룹핑
 if uploaded_files and not st.session_state.analysis_done:
-    show_fixed_status(T["progress_title"])  # 진행 중 상단 고정 메시지
+    show_fixed_status(T["progress_title"])
+    start_time = time.time()
 
     file_infos = []
     seen = set()
@@ -177,7 +178,7 @@ if uploaded_files and not st.session_state.analysis_done:
 
     grouped = group_by_tags(file_infos)
 
-    # ✅ ZIP 저장
+    # ✅ 결과 ZIP 생성
     st.subheader(T["preview_title"])
     temp_dir = tempfile.mkdtemp()
     saved_files = []
@@ -219,5 +220,9 @@ if uploaded_files and not st.session_state.analysis_done:
     st.session_state.file_infos = file_infos
 
     shutil.rmtree(temp_dir)
-    show_fixed_status(T["progress_done"])  # ✅ 분석 완료 메시지로 고정 변경
+    elapsed = time.time() - start_time
+    minutes, seconds = divmod(elapsed, 60)
+
+    show_fixed_status(T["progress_done"])
+    st.success(f"⏱ 분석 소요 시간: {int(minutes)}분 {int(seconds)}초" if is_ko else f"⏱ Elapsed time: {int(minutes)}m {int(seconds)}s")
     st.caption(T["caption"])
