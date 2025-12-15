@@ -26,7 +26,7 @@ st.markdown("""
 """)
 
 uploaded_files = st.file_uploader(
-    "⬆️ Markdown (.md) 파일 업로드 (최대 1000개)",
+    "⬆️ Markdown (.md) 파일 업로드 (최대 100개)",
     type="md",
     accept_multiple_files=True
 )
@@ -52,7 +52,7 @@ def get_topic_and_summary(filename, content):
 """
     try:
         res = client.chat.completions.create(
-            model="gpt-5-mini",  # 혹은 gpt-4-turbo 사용 가능
+            model="gpt-3.5-turbo",  # 혹은 gpt-4-turbo 사용 가능
             messages=[{"role": "user", "content": prompt}]
         )
         text = res.choices[0].message.content.strip()
@@ -84,7 +84,7 @@ def get_grouped_topics(file_infos):
 
     try:
         res = client.chat.completions.create(
-            model="gpt-5-mini",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": merge_prompt}]
         )
         text = res.choices[0].message.content.strip()
