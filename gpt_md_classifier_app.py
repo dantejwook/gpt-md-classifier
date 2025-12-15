@@ -1,12 +1,12 @@
 import streamlit as st
-import openai
+from openai import OpenAI
 import os
 import tempfile
 import shutil
 import zipfile
 
-# 🔑 API Key
-openai.api_key = st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else None
+# 🔑 OpenAI client 생성
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else None)
 
 # UI 기본 설정
 st.set_page_config(page_title="📁 Markdown 주제 분류기", page_icon="📚", layout="wide")
@@ -19,7 +19,7 @@ st.sidebar.markdown("[📦 GitHub 저장소 보기](https://github.com/dantejwoo
 # 메인 헤더
 st.title("📁 ChatGPT 기반 Markdown 주제 분류기")
 st.markdown("""
-AI가 자동으로 마크다운 문서를 분석하고 **주제별로 정리된 폴더**로 나눠줍니다.\
+AI가 자동으로 마크다운 문서를 분석하고 **주제별로 정리된 폴더**로 나눠줍니다.  
 최대 수백 개의 파일도 한 번에 정리할 수 있어요.
 """)
 
@@ -32,7 +32,7 @@ uploaded_files = st.file_uploader(
 )
 
 # API 키 없을 때 경고
-if not openai.api_key:
+if not client.api_key:
     st.error("❗ OpenAI API 키가 설정되지 않았습니다. Streamlit Secrets에 `OPENAI_API_KEY`를 설정해주세요.")
     st.stop()
 
@@ -47,12 +47,12 @@ def get_topic_from_gpt(filename, content):
 주제:
 """
     try:
-        res = openai.ChatCompletion.create(
+        res = client.chat.completions.create(
             model="gpt-4-1106-preview",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.25,
         )
-        topic = res["choices"][0]["message"]["content"].strip()
+        topic = res.choices[0].message.content.strip()
         return topic.replace(" ", "_")
     except Exception as e:
         st.error(f"GPT 처리 중 오류 발생: {e}")
