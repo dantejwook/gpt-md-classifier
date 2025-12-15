@@ -28,40 +28,42 @@ if not client.api_key:
 # GPT-5-nano: 파일별 주제 + 요약 추출
 def get_topic_and_summary(filename, content):
     prompt = f"""
-다음 문서의 핵심 주제와 간단한 내용을 각각 한 문장으로 요약하세요.
-
-출력 예시:
-주제: 데이터 분석
-요약: 이 문서는 pandas와 numpy를 활용한 데이터 처리 과정을 설명합니다.
+다음은 마크다운 문서입니다. 아래 문서의 주요 주제를 짧게 한 문장으로, 핵심 요약도 한 문장으로 추출해주세요.
+출력 형식:
+주제: [주제명]
+요약: [요약내용]
 
 문서 제목: {filename}
 내용:
-{content[:800]}
+{content[:1000]}
 """
     try:
         res = client.chat.completions.create(
             model="gpt-5-nano",
             messages=[{"role": "user", "content": prompt}]
         )
-        lines = res.choices[0].message.content.strip().split("\n")
-        topic = lines[0].replace("주제:", "").strip()
-        summary = lines[1].replace("요약:", "").strip() if len(lines) > 1 else ""
-        return topic, summary
+        text = res.choices[0].message.content.strip()
+        topic = "Unknown"
+        summary = ""
+        for line in text.split("\n"):
+            if line.lower().startswith("주제:"):
+                topic = line.split(":", 1)[1].strip()
+            elif line.lower().startswith("요약:"):
+                summary = line.split(":", 1)[1].strip()
+        return topic or "Unknown", summary
     except Exception as e:
         return "Unknown", ""
 
-# GPT-3.5-turbo: 병합 요청
+# GPT-3.5-turbo: 유사도 기반 병합
 def get_grouped_topics(file_infos):
     merge_prompt = """
-다음은 여러 마크다운 파일의 주제와 요약 내용입니다.
-서로 유사하거나 시너지가 있는 파일끼리 묶고, 각 그룹에 어울리는 주제를 붙여주세요.
-너무 세분화하지 말고, 총 5~10개의 그룹으로 압축해서 보여주세요.
+다음은 여러 마크다운 파일의 주제 및 요약입니다. 주제와 요약이 유사하거나 관련 있는 파일끼리 묶어 5~10개의 그룹으로 나눠주세요.
+그리고 각 그룹에 적절한 대표 키워드를 3~5개 생성해주세요.
+출력 형식:
+[그룹명]: 파일1.md, 파일2.md
+키워드: 키워드1, 키워드2, 키워드3
 
-출력 예시:
-- 데이터 분석: file1.md, file2.md
-- AI 응용: file3.md, file4.md
-
-입력:
+목록:
 """
     for info in file_infos:
         merge_prompt += f"- {info['filename']}: {info['topic']} / {info['summary']}\n"
@@ -73,11 +75,16 @@ def get_grouped_topics(file_infos):
         )
         text = res.choices[0].message.content.strip()
         groups = {}
+        current_group = None
         for line in text.split("\n"):
-            if ":" in line:
+            if ":" in line and ".md" in line:
                 topic, files_str = line.split(":", 1)
                 filenames = [f.strip() for f in files_str.split(",") if f.strip()]
-                groups[topic.strip()] = filenames
+                current_group = topic.strip()
+                groups[current_group] = {"files": filenames, "keywords": []}
+            elif "키워드:" in line and current_group:
+                keyword_str = line.split(":", 1)[1]
+                groups[current_group]["keywords"] = [k.strip() for k in keyword_str.split(",")]
         return groups
     except Exception as e:
         st.error(f"병합 처리 중 오류 발생: {e}")
@@ -87,12 +94,16 @@ if uploaded_files:
     st.subheader("📊 파일 분석 및 병합")
 
     file_infos = []
+    seen_files = set()
     future_to_file = {}
     with ThreadPoolExecutor(max_workers=5) as executor:
         progress = st.progress(0.0)
         status_text = st.empty()
         for uploaded_file in uploaded_files:
             filename = uploaded_file.name
+            if filename in seen_files:
+                continue
+            seen_files.add(filename)
             content = uploaded_file.read().decode("utf-8")
             future = executor.submit(get_topic_and_summary, filename, content)
             future_to_file[future] = {"filename": filename, "content": content}
@@ -110,30 +121,43 @@ if uploaded_files:
 
     # 저장 처리
     temp_dir = tempfile.mkdtemp()
-    for topic, filenames in grouped.items():
+    saved_files = []
+    for topic, group_data in grouped.items():
+        filenames = group_data["files"]
+        keywords = group_data.get("keywords", [])
         folder = os.path.join(temp_dir, topic.replace(" ", "_"))
         os.makedirs(folder, exist_ok=True)
+
+        # README 생성
+        readme_path = os.path.join(folder, "README.md")
+        with open(readme_path, "w", encoding="utf-8") as readme:
+            readme.write(f"# {topic}\n\n")
+            if keywords:
+                readme.write(f"**📌 키워드:** {', '.join(keywords)}\n\n")
+            readme.write("## 📄 포함된 파일 목록\n")
+            for f in filenames:
+                readme.write(f"- {f}\n")
+            saved_files.append(readme_path)
+
         for f in filenames:
             match = next((item for item in file_infos if item['filename'] == f), None)
             if match:
-                with open(os.path.join(folder, f), "w", encoding="utf-8") as md_file:
+                full_path = os.path.join(folder, f)
+                with open(full_path, "w", encoding="utf-8") as md_file:
                     md_file.write(match["content"])
+                saved_files.append(full_path)
 
-    st.success("✅ 병합 완료!")
-    for topic, files in grouped.items():
-        with st.expander(f"📂 {topic} ({len(files)}개)"):
-            st.markdown("\n".join([f"- `{f}`" for f in files]))
-
-    # 압축 다운로드
-    zip_path = os.path.join(temp_dir, "merged_markdowns.zip")
-    with zipfile.ZipFile(zip_path, "w") as zipf:
-        for root, _, files in os.walk(temp_dir):
-            for file in files:
-                filepath = os.path.join(root, file)
+    if not saved_files:
+        st.error("⚠️ 저장된 파일이 없습니다. 병합 과정에서 문제가 발생했을 수 있습니다.")
+    else:
+        zip_path = os.path.join(temp_dir, "merged_markdowns.zip")
+        with zipfile.ZipFile(zip_path, "w") as zipf:
+            for filepath in saved_files:
                 arcname = os.path.relpath(filepath, temp_dir)
                 zipf.write(filepath, arcname)
 
-    with open(zip_path, "rb") as fp:
-        st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
+        with open(zip_path, "rb") as fp:
+            st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
 
-    shutil.rmtree(temp_dir)
+        st.caption("※ ZIP 파일 다운로드 이후 임시 폴더는 자동 삭제됩니다.")
+        shutil.rmtree(temp_dir)
