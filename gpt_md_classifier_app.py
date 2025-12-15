@@ -10,7 +10,7 @@ from collections import defaultdict
 # ✅ OpenAI client
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# ✅ 언어 설정
+# ✅ 언어 선택
 LANG = st.sidebar.selectbox("🌐 Language / 언어", ["한국어", "English"])
 is_ko = LANG == "한국어"
 
@@ -23,6 +23,7 @@ T = {
     "download_info": "✅ 분석이 완료되었습니다. ZIP 파일을 다운로드하세요." if is_ko else "✅ Analysis complete. Download the ZIP file.",
     "waiting_info": "📂 파일을 업로드하면 분석이 자동 시작됩니다." if is_ko else "📂 Upload files to start analysis.",
     "progress_title": "📊 태그 추출 및 그룹화 진행 중..." if is_ko else "📊 Tag extraction and grouping in progress...",
+    "progress_done": "✅ 분석 완료" if is_ko else "✅ Analysis complete",
     "preview_title": "🧾 그룹화 결과 미리보기" if is_ko else "🧾 Preview Grouped Results",
     "group_files": "📄 파일 수" if is_ko else "📄 Files",
     "keywords": "📌 태그" if is_ko else "📌 Tags",
@@ -41,11 +42,11 @@ T = {
     )
 }
 
-# ✅ Streamlit 설정
+# ✅ 페이지 기본 설정
 st.set_page_config(page_title=T["title"], page_icon="🧩", layout="wide")
 st.title(T["title"])
 
-# ✅ 사이드바 설정
+# ✅ 사이드바
 model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-4", "gpt-3.5-turbo", "gpt-5-nano"], index=0)
 
 if st.sidebar.button(T["restart_btn"]):
@@ -53,14 +54,38 @@ if st.sidebar.button(T["restart_btn"]):
         st.session_state.clear()
         st.experimental_rerun()
 
-# ✅ 세션 상태 초기화
+# ✅ 세션 초기화
 if "zip_path" not in st.session_state:
     st.session_state.zip_path = None
     st.session_state.analysis_done = False
     st.session_state.grouped = None
     st.session_state.file_infos = None
 
-# ✅ GPT: 태그 추출
+# ✅ 고정 상태 메시지 출력
+def show_fixed_status(status_msg):
+    st.markdown(
+        f"""
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fde68a;
+            color: #000;
+            padding: 12px 20px;
+            z-index: 1000;
+            font-weight: bold;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        ">
+        {status_msg}
+        </div>
+        <br><br><br>
+        """,
+        unsafe_allow_html=True
+    )
+
+# ✅ GPT 태그 추출
 def extract_tags(filename, content):
     prompt = f"{T['prompt']}\n\n문서명: {filename}\n내용:\n{content[:1000].rsplit('\\n', 1)[0]}..."
     try:
@@ -78,9 +103,8 @@ def extract_tags(filename, content):
     except Exception:
         return []
 
-# ✅ 그룹핑
+# ✅ 그룹핑 함수
 def group_by_tags(file_infos):
-    from collections import defaultdict
     tag_to_files = defaultdict(list)
     for info in file_infos:
         for tag in info["tags"]:
@@ -89,7 +113,6 @@ def group_by_tags(file_infos):
     grouped = {}
     used = set()
     group_num = 1
-
     for tag, files in tag_to_files.items():
         group_files = [f for f in files if f["filename"] not in used]
         if not group_files:
@@ -97,7 +120,7 @@ def group_by_tags(file_infos):
         group_name = f"Group {group_num}: {tag}"
         grouped[group_name] = {
             "files": [f["filename"] for f in group_files],
-            "keywords": list(set(t for f in group_files for t in f["tags"]))
+            "keywords": list(set(tag for f in group_files for tag in f["tags"]))
         }
         for f in group_files:
             used.add(f["filename"])
@@ -105,9 +128,8 @@ def group_by_tags(file_infos):
 
     return grouped
 
-# ✅ 레이아웃 구성
+# ✅ 좌우 컬럼 UI
 left, right = st.columns([1.2, 2.8])
-
 with left:
     uploaded_files = st.file_uploader(T["upload_label"], type="md", accept_multiple_files=True)
 
@@ -120,17 +142,17 @@ with right:
     else:
         st.info(T["waiting_info"])
 
-    # 진행 현황 + 로그
-    progress = st.empty()
-    status_text = st.empty()
-    log_area = st.container()
-
 # ✅ 분석 및 실행
 if uploaded_files and not st.session_state.analysis_done:
-    st.subheader(T["progress_title"])
+    show_fixed_status(T["progress_title"])  # 진행 중 상단 고정 메시지
+
     file_infos = []
     seen = set()
     future_to_file = {}
+
+    progress = st.empty()
+    status_text = st.empty()
+    log_area = st.container()
 
     with ThreadPoolExecutor(max_workers=10) as executor:
         for file in uploaded_files:
@@ -153,7 +175,6 @@ if uploaded_files and not st.session_state.analysis_done:
             status_text.markdown(f"📄 `{info['filename']}` {T['analyzing']} ({int(percent*100)}%)")
             log_area.markdown(f"✅ `{info['filename']}` → {T['tags']}: {', '.join(tags)}")
 
-    # ✅ 그룹화
     grouped = group_by_tags(file_infos)
 
     # ✅ ZIP 저장
@@ -198,4 +219,5 @@ if uploaded_files and not st.session_state.analysis_done:
     st.session_state.file_infos = file_infos
 
     shutil.rmtree(temp_dir)
+    show_fixed_status(T["progress_done"])  # ✅ 분석 완료 메시지로 고정 변경
     st.caption(T["caption"])
