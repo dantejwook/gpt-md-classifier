@@ -87,7 +87,7 @@ def show_fixed_status(msg):
 # ✅ GPT 태그 추출
 def extract_tags(filename, content):
     prompt = f"""
-다음은 마크다운 문서입니다. 이 문서에서 주요 키워드 또는 태그 3~5개를 뽑아주세요. 간단히 추출하세요.
+다음은 마크다운 문서입니다. 이 문서에서 주요 키워드 또는 주제 3~5개를 뽑아주세요. 간단히 추출하세요.
 출력 예시:
 태그: tag1, tag2, tag3
 문서명: {filename}
