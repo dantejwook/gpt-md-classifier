@@ -26,14 +26,17 @@ col1, col2 = st.columns(2)
 with col1:
     start_clicked = st.button("🚀 분석 및 분류 시작", type="primary", use_container_width=True)
 with col2:
-    refresh_style = """
-        <style>
-        div.stButton > button:first-child {
-            background-color: #4CAF50;
-            color: white;
-        }
-        </style>
-    """
+start_style = """
+    <style>
+    div[data-testid="column"] div.stButton > button {
+        background-color: #d9534f;
+        color: white;
+        font-weight: bold;
+    }
+    </style>
+"""
+st.markdown(start_style, unsafe_allow_html=True)
+
     st.markdown(refresh_style, unsafe_allow_html=True)
     if st.button("🔄 전체 새로고침", use_container_width=True):
         st.experimental_rerun()
