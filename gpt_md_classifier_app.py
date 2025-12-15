@@ -51,6 +51,30 @@ if st.session_state.show_confirm:
             if st.button("❌ 취소"):
                 st.session_state.show_confirm = False
 
+# ✅ 고정 상태 메시지 함수
+def show_fixed_status(msg):
+    st.markdown(
+        f"""
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #fef3c7;
+            color: #000;
+            padding: 12px 20px;
+            z-index: 1000;
+            font-weight: bold;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        ">
+        {msg}
+        </div>
+        <br><br><br>
+        """,
+        unsafe_allow_html=True
+    )
+
 # ✅ 좌우 컬럼
 left_col, right_col = st.columns([1, 2.5])
 
