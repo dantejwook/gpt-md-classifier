@@ -75,86 +75,67 @@ def show_fixed_status(msg):
         unsafe_allow_html=True
     )
 
-# ✅ 좌우 컬럼
-left_col, right_col = st.columns([1, 2.5])
-
-with left_col:
-    uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드", type="md", accept_multiple_files=True)
-
-with right_col:
-    st.markdown("### 📦 다운로드 박스")
-    if st.session_state.analysis_done and st.session_state.zip_path:
-        with open(st.session_state.zip_path, "rb") as fp:
-            st.download_button("📥 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
-        st.success("✅ 분석이 완료되었습니다. ZIP 파일을 다운로드하세요.")
-    else:
-        st.info("파일을 업로드하면 분석이 시작되고 이곳에 ZIP 다운로드가 표시됩니다.")
-
-# ✅ GPT 요약 분석 함수
-def get_topic_and_summary(filename, content):
-    prompt = f"""
-다음은 마크다운 문서입니다. 아래 문서의 주요 주제를 짧게 한 문장으로, 핵심 요약도 한 문장으로 추출해주세요.
-출력 형식:
-주제: [주제명]
-요약: [요약내용]
-
-문서 제목: {filename}
-내용:
-{content[:1000].rsplit('\\n', 1)[0]}...
-"""
+# ✅ GPT 태그 추출 함수
+def extract_tags(filename, content):
+    prompt = f"{T['prompt']}\n\n문서명: {filename}\n내용:\n{content[:1000].rsplit('\\n', 1)[0]}..."
     try:
         res = client.chat.completions.create(
             model=model_choice,
             messages=[{"role": "user", "content": prompt}]
         )
         text = res.choices[0].message.content.strip()
-        topic, summary = "Unknown", ""
+        tags = []
         for line in text.split("\n"):
-            if line.lower().startswith("주제:"):
-                topic = line.split(":", 1)[1].strip()
-            elif line.lower().startswith("요약:"):
-                summary = line.split(":", 1)[1].strip()
-        return topic, summary
-    except Exception as e:
-        return "Unknown", f"❗ 오류: {str(e)}"
+            if "태그:" in line or "Tags:" in line:
+                tag_str = line.split(":", 1)[1]
+                tags = [t.strip().lower() for t in tag_str.split(",") if t.strip()]
+        return tags
+    except Exception:
+        return []
 
-# ✅ GPT 그룹핑
-def get_grouped_topics(file_infos):
-    merge_prompt = """
-다음은 여러 마크다운 파일의 주제 및 요약입니다. 관련 있는 파일끼리 5~10개의 그룹으로 나눠주세요.
-출력 형식:
-[그룹명]: 파일1.md, 파일2.md
-키워드: 키워드1, 키워드2, 키워드3
-
-목록:
-"""
+# ✅ 태그 기반 그룹핑
+def group_by_tags(file_infos):
+    tag_to_files = defaultdict(list)
     for info in file_infos:
-        merge_prompt += f"- {info['filename']}: {info['topic']} / {info['summary']}\n"
+        for tag in info["tags"]:
+            tag_to_files[tag].append(info)
 
-    try:
-        res = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": merge_prompt}]
-        )
-        text = res.choices[0].message.content.strip()
-        groups, current_group = {}, None
-        for line in text.split("\n"):
-            if ":" in line and ".md" in line:
-                topic, files_str = line.split(":", 1)
-                filenames = [f.strip() for f in files_str.split(",") if f.strip()]
-                current_group = topic.strip()
-                groups[current_group] = {"files": filenames, "keywords": []}
-            elif "키워드:" in line and current_group:
-                keyword_str = line.split(":", 1)[1]
-                groups[current_group]["keywords"] = [k.strip() for k in keyword_str.split(",")]
-        return groups
-    except Exception as e:
-        st.error(f"병합 처리 중 오류 발생: {e}")
-        return {}
+    grouped = {}
+    used = set()
+    group_num = 1
+    for tag, files in tag_to_files.items():
+        group_files = [f for f in files if f["filename"] not in used]
+        if not group_files:
+            continue
+        group_name = f"Group {group_num}: {tag}"
+        grouped[group_name] = {
+            "files": [f["filename"] for f in group_files],
+            "keywords": list(set(tag for f in group_files for tag in f["tags"]))
+        }
+        for f in group_files:
+            used.add(f["filename"])
+        group_num += 1
 
-# ✅ 자동 분석 시작
+    return grouped
+
+# ✅ 좌우 컬럼 UI
+left, right = st.columns([1.2, 2.8])
+with left:
+    uploaded_files = st.file_uploader(T["upload_label"], type="md", accept_multiple_files=True)
+
+with right:
+    st.markdown(f"### {T['download_box']}")
+    if st.session_state.analysis_done and st.session_state.zip_path:
+        with open(st.session_state.zip_path, "rb") as fp:
+            st.download_button(T["download_btn"], fp, file_name="tag_grouped_markdowns.zip", mime="application/zip")
+        st.success(T["download_info"])
+    else:
+        st.info(T["waiting_info"])
+
+# ✅ 분석 및 그룹핑
 if uploaded_files and not st.session_state.analysis_done:
-    show_fixed_status(T["progress_title"])  # 진행 중 상단 고정 메시지
+    show_fixed_status(T["progress_title"])
+    start_time = time.time()
 
     file_infos = []
     seen = set()
@@ -186,7 +167,7 @@ if uploaded_files and not st.session_state.analysis_done:
             log_area.markdown(f"✅ `{info['filename']}` → {T['tags']}: {', '.join(tags)}")
 
     grouped = group_by_tags(file_infos)
-
+    
     # ✅ ZIP 생성
     temp_dir = tempfile.mkdtemp()
     saved_files = []
