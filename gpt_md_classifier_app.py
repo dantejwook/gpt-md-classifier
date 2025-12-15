@@ -178,17 +178,6 @@ if uploaded_files and not st.session_state.analysis_done:
 
     grouped = group_by_tags(file_infos)
 
-    # ✅ 키워드  빈도 요약
-    all_tags = [tag for f in file_infos for tag in f["tags"]]
-    tag_counts = Counter(all_tags)
-    summary_path = os.path.join(temp_dir, "tags_summary.md")
-    with open(summary_path, "w", encoding="utf-8") as f:
-        f.write("# 📊 키워드 사용 빈도 요약\n\n" if is_ko else "# 📊 Tag Usage Summary\n\n")
-        f.write("| 키워드 | 사용 횟수 |\n|------|----------|\n" if is_ko else "| Tag | Count |\n|------|----------|\n")
-        for tag, count in tag_counts.most_common():
-            f.write(f"| `{tag}` | {count} |\n")
-    saved_files.append(summary_path)
-
     # ✅ 결과 ZIP 생성
     st.subheader(T["preview_title"])
     temp_dir = tempfile.mkdtemp()
