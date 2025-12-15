@@ -48,7 +48,7 @@ st.set_page_config(page_title=T["title"], page_icon="🧩", layout="wide")
 st.title(T["title"])
 
 # ✅ 모델 선택 + 다시 시작 버튼
-model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-4", "gpt-3.5-turbo", "gpt-5-nano"], index=0)
+model_choice = st.sidebar.selectbox(T["model_label"], ["gpt-5-nano", "gpt-4", "gpt-3.5-turbo"], index=0)
 if st.sidebar.button(T["restart_btn"]):
     if st.sidebar.radio(T["restart_confirm"], ["아니오", "예"] if is_ko else ["No", "Yes"], index=0, key="reset_confirm") == ("예" if is_ko else "Yes"):
         st.session_state.clear()
