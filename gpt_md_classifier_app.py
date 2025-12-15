@@ -40,7 +40,7 @@ st.title(T["title"])
 st.markdown(T["desc"])
 
 # ✅ 사이드바 설정
-model_choice = st.sidebar.selectbox(T["model"], ["gpt-4", "gpt-3.5-turbo", "gpt-5-nano"], index=0)
+model_choice = st.sidebar.selectbox(T["model"], ["gpt-5-nano"], index=0)
 
 # 🔁 다시 시작 버튼
 if st.sidebar.button(T["restart"]):
