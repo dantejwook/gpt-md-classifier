@@ -51,7 +51,9 @@ if "refresh" in st.experimental_get_query_params():
 # ✅ GPT: Extract Topic and Summary
 def get_topic_and_summary(filename, content):
     prompt = f"""
-다음은 마크다운 문서입니다. 아래 문서의 주요 주제를 짧게 한 문장으로, 핵심 요약도 한 문장으로 추출해주세요.
+다음은 마크다운 문서입니다.  **모든 파일을 반드시 포함하여**, 유사한 주제끼리 묶어 5~10개의 그룹으로 나눠주세요.
+각 그룹마다 대표 키워드도 생성해주세요.
+
 출력 형식:
 주제: [주제명]
 요약: [요약내용]
