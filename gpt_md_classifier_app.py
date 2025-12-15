@@ -21,6 +21,14 @@ st.markdown("""
 
 uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
 
+# ▶️ 시작 버튼과 새로고침 버튼 UI 추가
+col1, col2 = st.columns([1, 1])
+with col1:
+    start_clicked = st.button("🚀 분석 및 분류 시작")
+with col2:
+    if st.button("🔄 전체 새로고침"):
+        st.experimental_rerun()
+
 if not client.api_key:
     st.error("❗ OpenAI API 키가 설정되지 않았습니다.")
     st.stop()
@@ -90,7 +98,7 @@ def get_grouped_topics(file_infos):
         st.error(f"병합 처리 중 오류 발생: {e}")
         return {}
 
-if uploaded_files:
+if uploaded_files and start_clicked:
     st.subheader("📊 파일 분석 및 병합")
 
     file_infos = []
