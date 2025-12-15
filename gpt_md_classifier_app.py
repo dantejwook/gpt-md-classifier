@@ -34,22 +34,8 @@ model_choice = st.sidebar.selectbox(
     index=0,
 )
 
-# 🔄 초기화 요청 → 확장 확인창 띄우기
-if st.sidebar.button("🔄 다시 시작"):
+# 🔄 초기화 요청 → if st.sidebar.button("🔄 다시 시작"):
     st.session_state.show_confirm = True
-
-# ✅ 초기화 확인창
-if st.session_state.show_confirm:
-    with st.sidebar.expander("⚠️ 정말 초기화할까요?", expanded=True):
-        st.warning("모든 분석 결과와 업로드된 파일이 초기화됩니다.")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ 예, 초기화할게요"):
-                st.session_state.clear()
-                st.experimental_rerun()
-        with col2:
-            if st.button("❌ 취소"):
-                st.session_state.show_confirm = False
 
 # ✅ 좌우 컬럼
 left_col, right_col = st.columns([1, 2.5])
