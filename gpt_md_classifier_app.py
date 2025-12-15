@@ -1,16 +1,16 @@
-# Streamlit Markdown Classifier App (Auto-Start)
+# 📁 Streamlit App: Auto Markdown Classifier (OpenAI SDK v1+)
 import streamlit as st
-import openai
+from openai import OpenAI
 import os
 import tempfile
 import shutil
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# OpenAI API Key
-openai.api_key = st.secrets.get("OPENAI_API_KEY")
+# ✅ Initialize OpenAI client (new SDK v1+ syntax)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# UI Settings
+# ✅ Page Settings
 st.set_page_config(page_title="📁 Markdown 자동 병합 분류기", page_icon="📚", layout="wide")
 st.title("📁 ChatGPT 기반 Markdown 자동 분류 + 주제 병합")
 st.markdown("""
@@ -18,6 +18,7 @@ st.markdown("""
 파일은 10개씩 묶어서 처리되며, 모든 결과는 ZIP으로 다운로드할 수 있습니다.
 """)
 
+# ✅ Upload Area
 uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
 
 # ✅ Refresh Button Only
@@ -44,11 +45,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Refresh Logic
 if "refresh" in st.experimental_get_query_params():
     st.experimental_rerun()
 
-# GPT Topic Extraction
+# ✅ GPT: Extract Topic and Summary
 def get_topic_and_summary(filename, content):
     prompt = f"""
 다음은 마크다운 문서입니다. 아래 문서의 주요 주제를 짧게 한 문장으로, 핵심 요약도 한 문장으로 추출해주세요.
@@ -61,7 +61,7 @@ def get_topic_and_summary(filename, content):
 {content[:1000].rsplit('\\n', 1)[0]}...
 """
     try:
-        res = openai.ChatCompletion.create(
+        res = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}]
         )
@@ -77,7 +77,7 @@ def get_topic_and_summary(filename, content):
         st.warning(f"⚠️ {filename} 분석 중 오류: {e}")
         return "Unknown", ""
 
-# GPT Grouping
+# ✅ GPT: Grouping
 def get_grouped_topics(file_infos):
     merge_prompt = """
 다음은 여러 마크다운 파일의 주제 및 요약입니다. 주제와 요약이 유사하거나 관련 있는 파일끼리 묶어 5~10개의 그룹으로 나눠주세요.
@@ -92,7 +92,7 @@ def get_grouped_topics(file_infos):
         merge_prompt += f"- {info['filename']}: {info['topic']} / {info['summary']}\n"
 
     try:
-        res = openai.ChatCompletion.create(
+        res = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": merge_prompt}]
         )
@@ -112,11 +112,12 @@ def get_grouped_topics(file_infos):
         st.error(f"병합 처리 중 오류 발생: {e}")
         return {}
 
-# 🔄 Auto-run logic
+# ✅ Auto-run on file upload
 if uploaded_files:
     st.subheader("📊 파일 분석 및 병합 중...")
 
-    file_infos, seen_files = [], set()
+    file_infos = []
+    seen_files = set()
     future_to_file = {}
 
     with ThreadPoolExecutor(max_workers=5) as executor:
@@ -143,7 +144,7 @@ if uploaded_files:
 
     grouped = get_grouped_topics(file_infos)
 
-    # 📂 분류 및 저장
+    # ✅ Save results to ZIP
     st.subheader("🧾 분류 결과 미리보기")
     temp_dir = tempfile.mkdtemp()
     saved_files = []
@@ -176,7 +177,6 @@ if uploaded_files:
                     md_file.write(match["content"])
                 saved_files.append(full_path)
 
-    # 📦 ZIP 생성 및 다운로드
     if saved_files:
         zip_path = os.path.join(temp_dir, "merged_markdowns.zip")
         with zipfile.ZipFile(zip_path, "w") as zipf:
