@@ -59,7 +59,7 @@ with st.container():
     if st.button("🔄 전체 새로고침", key="refresh", use_container_width=True):
         st.experimental_rerun()
         st.experimental_rerun()
-st.markdown("</div>", unsafe_allow_ht
+st.markdown("</div>", unsafe_allow_html=True)
         st.experimental_rerun()
 
 if not client.api_key:
