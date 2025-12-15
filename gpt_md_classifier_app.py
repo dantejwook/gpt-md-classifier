@@ -36,21 +36,22 @@ if not client.api_key:
     st.error("❗ OpenAI API 키가 설정되지 않았습니다. Streamlit Secrets에 `OPENAI_API_KEY`를 설정해주세요.")
     st.stop()
 
-# GPT 주제 추출 함수
+# GPT 주제 추출 함수 (gpt-5-nano용)
 def get_topic_from_gpt(filename, content):
     prompt = f"""
-다음 마크다운 문서의 주요 주제를 한 단어나 두 단어로 요약해 주세요.
+다음 문서의 핵심 주제를
+한 단어 또는 두 단어로만 답하세요.
+
 문서 제목: {filename}
 내용:
-{content[:1200]}
----
-주제:
+{content[:800]}
 """
     try:
         res = client.chat.completions.create(
             model="gpt-5-nano",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.25,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
         )
         topic = res.choices[0].message.content.strip()
         return topic.replace(" ", "_")
