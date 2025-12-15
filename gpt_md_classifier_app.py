@@ -4,6 +4,8 @@ import os
 import tempfile
 import shutil
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # 🔑 OpenAI client 생성
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else None)
@@ -46,38 +48,64 @@ def get_topic_from_gpt(filename, content):
 내용:
 {content[:800]}
 """
-    try:
-        res = client.chat.completions.create(
-            model="gpt-5-nano",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        topic = res.choices[0].message.content.strip()
-        return topic.replace(" ", "_")
-    except Exception as e:
-        st.error(f"GPT 처리 중 오류 발생: {e}")
-        return "Unknown"
+    retries = 3
+    for i in range(retries):
+        try:
+            res = client.chat.completions.create(
+                model="gpt-5-nano",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            topic = res.choices[0].message.content.strip()
+            return topic.replace(" ", "_")
+        except Exception as e:
+            if i < retries - 1:
+                time.sleep(1.5)  # 재시도 대기
+            else:
+                st.error(f"GPT 처리 중 오류 발생: {e}")
+                return "Unknown"
+
+# 캐시 방지용: 해시 맵
+topic_cache = {}
 
 # 메인 처리 로직
 if uploaded_files:
     st.subheader("📊 분석 결과")
+    progress_bar = st.progress(0, text="GPT가 파일을 분석 중입니다...")
+    status_text = st.empty()
+
     with st.spinner("🔍 GPT가 주제를 분석 중입니다. 잠시만 기다려주세요..."):
         temp_dir = tempfile.mkdtemp()
         grouped = {}
 
-        for uploaded_file in uploaded_files:
-            content = uploaded_file.read().decode("utf-8")
+        def process_file(index, uploaded_file):
             filename = uploaded_file.name
+            content = uploaded_file.read().decode("utf-8")
+            if content in topic_cache:
+                topic = topic_cache[content]
+            else:
+                topic = get_topic_from_gpt(filename, content)
+                topic_cache[content] = topic
 
-            topic = get_topic_from_gpt(filename, content)
             topic_folder = os.path.join(temp_dir, topic)
             os.makedirs(topic_folder, exist_ok=True)
-
             with open(os.path.join(topic_folder, filename), "w", encoding="utf-8") as f:
                 f.write(content)
 
-            grouped.setdefault(topic, []).append(filename)
+            return topic, filename
+
+        results = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_index = {executor.submit(process_file, i, f): i for i, f in enumerate(uploaded_files)}
+            for i, future in enumerate(as_completed(future_to_index)):
+                index = future_to_index[future]
+                try:
+                    topic, filename = future.result()
+                    grouped.setdefault(topic, []).append(filename)
+                except Exception as e:
+                    st.error(f"오류 발생: {e}")
+                progress_bar.progress((i + 1) / len(uploaded_files), text=f"{i + 1}/{len(uploaded_files)} 파일 완료")
 
         st.success("✅ 파일 분류가 완료되었습니다!")
 
@@ -104,5 +132,4 @@ if uploaded_files:
                 help="주제별로 정리된 마크다운 파일들을 압축해서 받습니다."
             )
 
-        # 정리
         shutil.rmtree(temp_dir)
