@@ -90,6 +90,7 @@ if uploaded_files:
     future_to_file = {}
     with ThreadPoolExecutor(max_workers=5) as executor:
         progress = st.progress(0.0)
+        status_text = st.empty()
         for uploaded_file in uploaded_files:
             filename = uploaded_file.name
             content = uploaded_file.read().decode("utf-8")
@@ -101,7 +102,9 @@ if uploaded_files:
             info = future_to_file[future]
             info["topic"], info["summary"] = result
             file_infos.append(info)
-            progress.progress((i+1)/len(future_to_file))
+            percent = (i + 1) / len(future_to_file)
+            progress.progress(percent)
+            status_text.markdown(f"📄 분석 중: {i+1}/{len(future_to_file)}개 완료 ({int(percent*100)}%)")
 
     grouped = get_grouped_topics(file_infos)
 
