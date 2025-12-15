@@ -130,39 +130,38 @@ def get_grouped_topics(file_infos):
 
 # ✅ 자동 분석 시작
 if uploaded_files and not st.session_state.analysis_done:
-    st.subheader("📊 파일 분석 중...")
+    show_fixed_status(T["progress_title"])  # 진행 중 상단 고정 메시지
 
     file_infos = []
-    seen_files = set()
+    seen = set()
     future_to_file = {}
 
-    progress = st.progress(0.0)
+    progress = st.empty()
     status_text = st.empty()
-    log_container = st.container()
+    log_area = st.container()
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        for uploaded_file in uploaded_files:
-            filename = uploaded_file.name
-            if filename in seen_files:
+        for file in uploaded_files:
+            name = file.name
+            if name in seen:
                 continue
-            seen_files.add(filename)
-            content = uploaded_file.read().decode("utf-8")
-            future = executor.submit(get_topic_and_summary, filename, content)
-            future_to_file[future] = {"filename": filename, "content": content}
+            seen.add(name)
+            content = file.read().decode("utf-8")
+            future = executor.submit(extract_tags, name, content)
+            future_to_file[future] = {"filename": name, "content": content}
 
         for i, future in enumerate(as_completed(future_to_file)):
-            topic, summary = future.result()
+            tags = future.result()
             info = future_to_file[future]
-            info["topic"] = topic
-            info["summary"] = summary
+            info["tags"] = tags
             file_infos.append(info)
 
             percent = (i + 1) / len(future_to_file)
             progress.progress(percent)
-            status_text.markdown(f"📄 분석 중: {i+1}/{len(future_to_file)}개 완료")
-            log_container.markdown(f"✅ **{info['filename']}**")
+            status_text.markdown(f"📄 `{info['filename']}` {T['analyzing']} ({int(percent*100)}%)")
+            log_area.markdown(f"✅ `{info['filename']}` → {T['tags']}: {', '.join(tags)}")
 
-    grouped = get_grouped_topics(file_infos)
+    grouped = group_by_tags(file_infos)
 
     # ✅ ZIP 생성
     temp_dir = tempfile.mkdtemp()
