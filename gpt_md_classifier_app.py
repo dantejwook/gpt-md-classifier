@@ -185,8 +185,8 @@ if uploaded_files:
                 arcname = os.path.relpath(filepath, temp_dir)
                 zipf.write(filepath, arcname)
 
-        with open(zip_path, "rb") as fp:
-            st.download_button("📦 병합 ZIP 다운로드", zip_bytes, file_name="merged_markdowns.zip", mime="application/zip"):
-    st.success("✅ 다운로드 완료")
-    else:
-        st.error("⚠️ 병합된 파일이 저장되지 않았습니다.")
+    # ✅ Download button (no reprocessing)
+    with open(zip_path, "rb") as fp:
+        st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
+
+    st.caption("※ ZIP 다운로드 후에도 다시 분석하지 않습니다. 다시 시작하려면 상단의 '🔄 다시 시작' 버튼을 눌러주세요.")
