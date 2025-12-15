@@ -11,7 +11,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ✅ 페이지 기본 설정
 st.set_page_config(page_title="📁 Markdown 자동 분류기", page_icon="📚", layout="wide")
-st.title("📁 ChatGPT 기반 Markdown 자동 분류 + 병합 도구")
+st.title("📁 AI 파일 자동 분류 및 키워드 요약")
 
 st.markdown("""
 Markdown 파일들을 업로드하면 GPT가 내용을 요약하고, 관련 주제끼리 그룹화하여 ZIP 파일로 제공합니다.
