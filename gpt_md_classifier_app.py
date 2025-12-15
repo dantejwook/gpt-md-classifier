@@ -186,8 +186,7 @@ if uploaded_files:
                 zipf.write(filepath, arcname)
 
         with open(zip_path, "rb") as fp:
-            st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
-        shutil.rmtree(temp_dir)
-        st.caption("※ ZIP 파일 다운로드 이후 임시 폴더는 자동 삭제됩니다.")
+            st.download_button("📦 병합 ZIP 다운로드", zip_bytes, file_name="merged_markdowns.zip", mime="application/zip"):
+    st.success("✅ 다운로드 완료")
     else:
         st.error("⚠️ 병합된 파일이 저장되지 않았습니다.")
