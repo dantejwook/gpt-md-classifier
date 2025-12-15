@@ -88,6 +88,7 @@ def show_fixed_status(msg):
 def extract_tags(filename, content):
     prompt = f"""
 다음은 마크다운 문서입니다. 이 문서에서 주요 키워드 또는 태그, 주제를 3~5개를 뽑아주세요. 간단히 추출하세요.
+단, 태그의 갯수가 많고 파일별로 중복사항이 있을 경우 정리 후 시너지 있는 것들로 모아 추출하세요
 출력 예시:
 태그: tag1, tag2, tag3
 문서명: {filename}
