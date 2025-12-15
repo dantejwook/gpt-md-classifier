@@ -22,9 +22,20 @@ st.markdown("""
 uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
 
 # ▶️ 시작 버튼과 새로고침 버튼 UI 추가
-col1, col2 = st.columns(2)
+st.markdown("<div style='display: flex; gap: 10px;'>", unsafe_allow_html=True)
+col1, col2 = st.columns([1, 1])
 with col1:
-    start_clicked = st.button("🚀 분석 및 분류 시작", type="primary", use_container_width=True)
+    start_style = """
+    <style>
+    div.start-button > button:first-child {
+        background-color: #d9534f;
+        color: white;
+    }
+    </style>
+"""
+st.markdown(start_style, unsafe_allow_html=True)
+with st.container():
+    start_clicked = st.button("🚀 분석 및 분류 시작", key="start", use_container_width=True, help="업로드한 파일을 분석하여 그룹화 시작")
 with col2:
     refresh_style = """
         <style>
@@ -35,8 +46,20 @@ with col2:
         </style>
     """
     st.markdown(refresh_style, unsafe_allow_html=True)
-    if st.button("🔄 전체 새로고침", use_container_width=True):
+    refresh_style = """
+    <style>
+    div.refresh-button > button:first-child {
+        background-color: #4CAF50;
+        color: white;
+    }
+    </style>
+"""
+st.markdown(refresh_style, unsafe_allow_html=True)
+with st.container():
+    if st.button("🔄 전체 새로고침", key="refresh", use_container_width=True):
         st.experimental_rerun()
+        st.experimental_rerun()
+st.markdown("</div>", unsafe_allow_ht
         st.experimental_rerun()
 
 if not client.api_key:
