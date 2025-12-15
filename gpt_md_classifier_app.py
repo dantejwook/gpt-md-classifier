@@ -9,17 +9,17 @@ import time
 import json
 
 # 🔑 OpenAI client 생성
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"] if "OPENAI_API_KEY" in st.secrets else None)
+client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY"))
 
-# UI 기본 설정
-st.set_page_config(page_title="📁 Markdown 주제 분류기 (자동 병합 포함)", page_icon="📚", layout="wide")
+st.set_page_config(page_title="📁 Markdown 자동 병합 분류기", page_icon="📚", layout="wide")
 
 st.title("📁 ChatGPT 기반 Markdown 자동 분류 + 주제 병합")
 st.markdown("""
-AI가 마크다운 파일을 분석해 비슷한 문서끼리 **의미적으로 묶고**, 주제별로 폴더를 자동 생성합니다.
+업로드한 Markdown 파일들을 GPT가 자동 분석하여 **시너지 있는 주제 그룹**으로 묶어줍니다.  
+파일은 10개씩 묶어서 처리되며, 모든 결과는 ZIP으로 다운로드할 수 있습니다.
 """)
 
-uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드", type="md", accept_multiple_files=True)
+uploaded_files = st.file_uploader("⬆️ Markdown (.md) 파일 업로드 (최대 100개)", type="md", accept_multiple_files=True)
 
 if not client.api_key:
     st.error("❗ OpenAI API 키가 설정되지 않았습니다.")
@@ -84,45 +84,44 @@ def get_grouped_topics(file_infos):
         return {}
 
 if uploaded_files:
-    st.subheader("📊 파일 분석 및 병합 중...")
-    progress = st.progress(0)
+    st.subheader("📊 파일 분석 및 병합")
+
     file_infos = []
-
+    future_to_file = {}
     with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = []
-        for i, uploaded_file in enumerate(uploaded_files):
-            content = uploaded_file.read().decode("utf-8")
+        progress = st.progress(0.0)
+        for uploaded_file in uploaded_files:
             filename = uploaded_file.name
-            futures.append(executor.submit(get_topic_and_summary, filename, content))
-            file_infos.append({"filename": filename, "content": content})
+            content = uploaded_file.read().decode("utf-8")
+            future = executor.submit(get_topic_and_summary, filename, content)
+            future_to_file[future] = {"filename": filename, "content": content}
 
-        for i, future in enumerate(as_completed(futures)):
-            topic, summary = future.result()
-            file_infos[i]["topic"] = topic
-            file_infos[i]["summary"] = summary
-            progress.progress((i+1)/len(uploaded_files))
+        for i, future in enumerate(as_completed(future_to_file)):
+            result = future.result()
+            info = future_to_file[future]
+            info["topic"], info["summary"] = result
+            file_infos.append(info)
+            progress.progress((i+1)/len(future_to_file))
 
     grouped = get_grouped_topics(file_infos)
 
-    # 임시 폴더 생성 및 저장
+    # 저장 처리
     temp_dir = tempfile.mkdtemp()
-    for group_topic, filenames in grouped.items():
-        group_folder = os.path.join(temp_dir, group_topic.replace(" ", "_"))
-        os.makedirs(group_folder, exist_ok=True)
-        for name in filenames:
-            match = next((f for f in file_infos if f["filename"] == name), None)
+    for topic, filenames in grouped.items():
+        folder = os.path.join(temp_dir, topic.replace(" ", "_"))
+        os.makedirs(folder, exist_ok=True)
+        for f in filenames:
+            match = next((item for item in file_infos if item['filename'] == f), None)
             if match:
-                with open(os.path.join(group_folder, name), "w", encoding="utf-8") as f:
-                    f.write(match["content"])
+                with open(os.path.join(folder, f), "w", encoding="utf-8") as md_file:
+                    md_file.write(match["content"])
 
-    st.success("✅ 파일 분류 및 병합이 완료되었습니다!")
-
+    st.success("✅ 병합 완료!")
     for topic, files in grouped.items():
         with st.expander(f"📂 {topic} ({len(files)}개)"):
-            for f in files:
-                st.markdown(f"- `{f}`")
+            st.markdown("\n".join([f"- `{f}`" for f in files]))
 
-    # 압축 및 다운로드
+    # 압축 다운로드
     zip_path = os.path.join(temp_dir, "merged_markdowns.zip")
     with zipfile.ZipFile(zip_path, "w") as zipf:
         for root, _, files in os.walk(temp_dir):
@@ -132,6 +131,6 @@ if uploaded_files:
                 zipf.write(filepath, arcname)
 
     with open(zip_path, "rb") as fp:
-        st.download_button("📦 병합 결과 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
+        st.download_button("📦 병합 ZIP 다운로드", fp, file_name="merged_markdowns.zip", mime="application/zip")
 
     shutil.rmtree(temp_dir)
