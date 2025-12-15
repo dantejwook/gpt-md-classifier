@@ -17,7 +17,7 @@ T = {
     "title": "🧩 GPT 기반 Markdown 태그 분류기" if is_ko else "🧩 GPT-based Markdown Tag Grouper",
     "desc": "Markdown 파일을 업로드하면 GPT가 태그를 추출하고 그룹화하여 ZIP 파일로 제공합니다." if is_ko else "Upload markdown files. GPT will extract and group them by tags.",
     "upload": "⬆️ Markdown (.md) 파일 업로드" if is_ko else "⬆️ Upload Markdown Files",
-    "model": "📌 사용할 GPT 모델" if is_ko else "📌 Select GPT Model",
+    "model": "📌 GPT 모델" if is_ko else "📌 GPT Model",
     "restart": "🔄 다시 시작" if is_ko else "🔄 Restart",
     "confirm_restart": "정말 다시 시작하시겠습니까?" if is_ko else "Are you sure you want to restart?",
     "yes": "예" if is_ko else "Yes",
