@@ -140,6 +140,20 @@ def group_by_tags(file_infos):
         group_num += 1
     return grouped
 
+# ✅ 좌우 컬럼 UI
+left, right = st.columns([1.2, 2.8])
+with left:
+    uploaded_files = st.file_uploader(T["upload_label"], type="md", accept_multiple_files=True)
+
+with right:
+    st.markdown(f"### {T['download_box']}")
+    if st.session_state.analysis_done and st.session_state.zip_path:
+        with open(st.session_state.zip_path, "rb") as fp:
+            st.download_button(T["download_btn"], fp, file_name="tag_grouped_markdowns.zip", mime="application/zip")
+        st.success(T["download_info"])
+    else:
+        st.info(T["waiting_info"])
+
 # ✅ 메인 실행
 if uploaded_files and "zip_path" not in st.session_state:
     start_time = time.time()
