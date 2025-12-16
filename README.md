@@ -1,6 +1,39 @@
-# gpt-md-classifier
-Streamlit + ChatGPT로 마크다운 주제 분류기
-Streamlit 앱
-📁 Advanced settings 열기
-Secrets 항목에 아래 내용 복사해서 붙여넣기:
-OPENAI_API_KEY = "sk-여기에_당신의_실제_API_키"
+# 📚 문서 의미 분석 및 추천 플랫폼
+
+Streamlit 기반의 웹 애플리케이션으로, 업로드된 다양한 형식의 문서를 자동으로 이해하고, 의미 기반으로 정리하여 요약 및 추천을 제공합니다.  
+문서 관리 도구를 넘어 **지식 탐색 플랫폼**으로 확장 가능한 형태로 설계되었습니다.
+
+## ✅ 주요 기능
+
+문서 업로드
+→ 파일명 기반 1차 정리
+→ 텍스트 추출 및 임베딩
+→ 의미 기반 클러스터링
+→ GPT 요약 및 키워드 추출
+→ 유사 문서 추천
+→ 결과 마크다운 + ZIP 다운로드
+
+## 📦 지원 문서 형식
+
+- `.pdf`
+- `.md`
+- `.txt`
+
+## 🧠 처리 파이프라인
+
+| Step | 설명 |
+|------|------|
+| **STEP 0** | 문서 업로드 및 전처리 (텍스트 추출, chunk 분할) |
+| **STEP 1** | 파일명 기반 소프트 그룹핑 (날짜/키워드) |
+| **STEP 2** | OpenAI 임베딩 생성 (`text-embedding-3-small`) |
+| **STEP 3** | KMeans 기반 의미 클러스터링 |
+| **STEP 4** | GPT 요약 (`gpt-5-nano`, `gpt-3.5-turbo`) |
+| **STEP 5** | 코사인 유사도 기반 문서 추천 |
+| **STEP 6** | Markdown 요약 출력 + ZIP 다운로드 |
+
+## 💻 실행 방법
+
+1. **필수 패키지 설치**
+
+```bash
+pip install -r requirements.txt
